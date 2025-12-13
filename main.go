@@ -3,9 +3,14 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/wbhemingway/gator/internal/config"
 )
+
+type state struct {
+	cfg *config.Config
+}
 
 func main() {
 	cfg, err := config.Read()
@@ -13,15 +18,22 @@ func main() {
 		log.Fatal(fmt.Errorf("error reading config: %w", err))
 	}
 
-	err = cfg.SetUser("william")
-	if err != nil {
-		log.Fatal(fmt.Errorf("error setting user: %w", err))
+	progState := &state{cfg: &cfg}
+	cmds := commands{
+		registeredCommands: make(map[string]func(*state, command) error),
 	}
 
-	cfg, err = config.Read()
-	if err != nil {
-		log.Fatal(fmt.Errorf("error reading config: %w", err))
+	cmds.register("login", handlerLogin)
+
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: cli <command> [args...]")
 	}
 
-	fmt.Printf("db_url: %v, current_user: %v", cfg.DBUrl, cfg.User)
+	cmdName := os.Args[1]
+	cmdArgs := os.Args[2:]
+
+	err = cmds.run(progState, command{Name: cmdName, Args: cmdArgs})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
