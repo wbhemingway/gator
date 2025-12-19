@@ -81,7 +81,7 @@ func handlerUsers(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("error getting users %w", err)
 	}
-	
+
 	for _, user := range users {
 		txt := fmt.Sprintf("* %s", user.Name)
 		if user.Name == s.cfg.User {
@@ -89,6 +89,6 @@ func handlerUsers(s *state, cmd command) error {
 		}
 		fmt.Println(txt)
 	}
-	
+
 	return nil
 }
