@@ -31,7 +31,7 @@ func handlerAgg(s *state, cmd command, user database.User) error {
 func scrapeFeeds(s *state, user database.User) {
 	feedDB, err := s.db.GetNextFeedToFetch(context.Background(), user.ID)
 	if err != nil {
-		log.Printf("error getting next feed to fetch: %w", err)
+		log.Printf("error getting next feed to fetch: %v", err)
 	}
 
 	markFeedFetchedArgs := database.MarkFeedFetchedParams{
@@ -40,13 +40,13 @@ func scrapeFeeds(s *state, user database.User) {
 	}
 	err = s.db.MarkFeedFetched(context.Background(), markFeedFetchedArgs)
 	if err != nil {
-		log.Printf("error marking feed as fetched: %w", err)
+		log.Printf("error marking feed as fetched: %v", err)
 		return
 	}
 
 	feed, err := fetchFeed(context.Background(), feedDB.Url)
 	if err != nil {
-		log.Printf("error fetching feed: %w", err)
+		log.Printf("error fetching feed: %v", err)
 		return
 	}
 

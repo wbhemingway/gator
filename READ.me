@@ -1,0 +1,15 @@
+# Gator CLI Tool
+### Requirements
+- unix based system
+- Postgres installed
+- Go installed
+### Instalation
+- run: go install github.com/wbhemingway/gator
+### Setup
+- You will need to create a config file at your home directory
+- It should be in json format, containing db_url: "your db url"
+### Useage
+- register <username>
+- addfeed <url>
+- agg <time interval>: this is to run in the background once you've added feeds, something like 5s is safe
+- browse <num>
