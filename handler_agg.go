@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wbhemingway/gator/internal/database"
 )
 
@@ -24,10 +28,10 @@ func handlerAgg(s *state, cmd command, user database.User) error {
 
 }
 
-func scrapeFeeds(s *state, user database.User) error {
+func scrapeFeeds(s *state, user database.User) {
 	feedDB, err := s.db.GetNextFeedToFetch(context.Background(), user.ID)
 	if err != nil {
-		return fmt.Errorf("error getting next feed to fetch: %w", err)
+		log.Printf("error getting next feed to fetch: %w", err)
 	}
 
 	markFeedFetchedArgs := database.MarkFeedFetchedParams{
@@ -36,16 +40,46 @@ func scrapeFeeds(s *state, user database.User) error {
 	}
 	err = s.db.MarkFeedFetched(context.Background(), markFeedFetchedArgs)
 	if err != nil {
-		return fmt.Errorf("error marking feed as fetched: %w", err)
+		log.Printf("error marking feed as fetched: %w", err)
+		return
 	}
 
 	feed, err := fetchFeed(context.Background(), feedDB.Url)
 	if err != nil {
-		return fmt.Errorf("error fetching feed: %w", err)
+		log.Printf("error fetching feed: %w", err)
+		return
 	}
 
 	for _, item := range feed.Channel.Item {
-		fmt.Println(item.Title)
+		publishedAt := sql.NullTime{}
+		if t, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
+			publishedAt = sql.NullTime{
+				Time:  t,
+				Valid: true,
+			}
+		}
+		curTime := time.Now()
+		CreatePostArgs := database.CreatePostParams{
+			ID:        uuid.New(),
+			CreatedAt: curTime,
+			UpdatedAt: curTime,
+			FeedID:    feedDB.ID,
+			Title:     item.Title,
+			Description: sql.NullString{
+				String: item.Description,
+				Valid:  true,
+			},
+			Url:         item.Link,
+			PublishedAt: publishedAt,
+		}
+		_, err = s.db.CreatePost(context.Background(), CreatePostArgs)
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Couldn't create post: %v", err)
+			continue
+		}
 	}
-	return nil
+	log.Printf("Feed %s collected, %v posts found", feedDB.Name, len(feed.Channel.Item))
 }
